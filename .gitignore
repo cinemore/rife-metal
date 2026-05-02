@@ -1,0 +1,30 @@
+# Swift Package Manager
+.build/
+.swiftpm/
+Packages/
+*.xcodeproj/xcuserdata/
+xcuserdata/
+DerivedData/
+
+# macOS
+.DS_Store
+
+# Python tooling
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Test fixtures (large binary artifacts)
+tests/fixtures/*.rmw
+tests/fixtures/*.npz
+tests/fixtures/reference_*.png
+tests/fixtures/frame_*.png
+tests/fixtures/ours_*.png
+
+# Local upstream checkouts used by tools/convert-weights.py and tools/_emit_reference.py
+# (see README for setup instructions)
+third_party/
+
+# Local design / planning notes (private)
+docs/superpowers/
