@@ -4,7 +4,7 @@ Per-stage activation diff. Reads our debug-dumped tensors from RIFE_DUMP_DIR and
 compares each to the matching tensor in reference_activations.npz.
 
 Usage:
-    python tools/diff-activations.py /tmp/dump tests/fixtures/reference_activations.npz
+    python tools/diff-activations.py /tmp/dump Tests/fixtures/reference_activations.npz
 """
 
 import sys

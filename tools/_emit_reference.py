@@ -111,7 +111,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pytorch-checkpoint", type=Path, required=True,
                         help="Path to flownet.pkl (Practical-RIFE v4.26 checkpoint)")
-    parser.add_argument("--fixtures-dir", type=Path, default=Path("tests/fixtures"),
+    parser.add_argument("--fixtures-dir", type=Path, default=Path("Tests/fixtures"),
                         help="Directory containing frame_a.png / frame_b.png (outputs written here)")
     args = parser.parse_args()
     emit_reference(args.pytorch_checkpoint, args.fixtures_dir)

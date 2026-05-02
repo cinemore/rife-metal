@@ -15,12 +15,10 @@ __pycache__/
 .venv/
 venv/
 
-# Test fixtures (large binary artifacts)
-tests/fixtures/*.rmw
-tests/fixtures/*.npz
-tests/fixtures/reference_*.png
-tests/fixtures/frame_*.png
-tests/fixtures/ours_*.png
+# Test fixtures: keep small PNGs (used as demo images + parity test inputs)
+# but exclude regenerable / large binary artifacts.
+Tests/fixtures/*.rmw
+Tests/fixtures/*.npz
 
 # Local upstream checkouts used by tools/convert-weights.py and tools/_emit_reference.py
 # (see README for setup instructions)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-End-to-end parity test: runs the rife-metal CLI on tests/fixtures/{frame_a,frame_b}.png,
-compares the output to tests/fixtures/reference_mid.png by PSNR.
+End-to-end parity test: runs the rife-metal CLI on Tests/fixtures/{frame_a,frame_b}.png,
+compares the output to Tests/fixtures/reference_mid.png by PSNR.
 
 Acceptance: PSNR > 40 dB.
 """
@@ -25,7 +25,7 @@ def psnr(a: np.ndarray, b: np.ndarray) -> float:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--cli", default=".build/release/rife-metal")
-    parser.add_argument("--fixtures", type=Path, default=Path("tests/fixtures"))
+    parser.add_argument("--fixtures", type=Path, default=Path("Tests/fixtures"))
     parser.add_argument("--model", type=Path,
                         default=Path("Sources/RifeMetal/Resources/rife-v4.26.rmw"))
     parser.add_argument("--threshold", type=float, default=25.0)
