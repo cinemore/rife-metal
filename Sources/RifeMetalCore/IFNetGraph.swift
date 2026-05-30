@@ -1332,9 +1332,9 @@ public final class IFNetGraph {
     private static func tensorDataToFloat32(_ td: MPSGraphTensorData) -> [Float] {
         let shape = td.shape
         let elemCount = shape.reduce(1) { $0 * $1.intValue }
-        var fp16 = [Float16](repeating: 0, count: elemCount)
+        var fp16 = [UInt16](repeating: 0, count: elemCount)
         td.mpsndarray().readBytes(&fp16, strideBytes: nil as UnsafeMutablePointer<Int>?)
-        return fp16.map { Float($0) }
+        return fp16.map { HalfPrecision.bitsToFloat($0) }
     }
 
     private static func dumpStageActivations(stageIndex: Int,

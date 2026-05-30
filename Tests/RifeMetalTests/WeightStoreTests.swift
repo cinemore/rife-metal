@@ -46,8 +46,8 @@ final class WeightStoreTests: XCTestCase {
 
         // Decode fp16 back to fp32 and compare.
         let decoded = bytes.withUnsafeBytes { buf -> [Float] in
-            let ptr = buf.bindMemory(to: Float16.self)
-            return ptr.map { Float($0) }
+            let ptr = buf.bindMemory(to: UInt16.self)
+            return ptr.map { HalfPrecision.bitsToFloat(UInt16(littleEndian: $0)) }
         }
         XCTAssertEqual(decoded, [1, 2, 3, 4])
     }

@@ -44,14 +44,14 @@ final class BufferPool {
     /// setTimestep see the historical t=0.5 midframe behavior.
     let tBuf: MTLBuffer
 
-    /// Rewrites every element of `tBuf` with the given uniform timestep (cast to Float16).
+    /// Rewrites every element of `tBuf` with the given uniform timestep (binary16 bit pattern).
     /// Safe to call between runs — the previous run's GPU work has completed by the time the
     /// caller (`IFNetGraph.run`) reaches this on the next call (run is synchronous via
     /// `waitUntilCompleted`).
     func setTimestep(_ t: Float) {
-        let count = tBuf.length / MemoryLayout<Float16>.stride
-        let ptr = tBuf.contents().bindMemory(to: Float16.self, capacity: count)
-        let h = Float16(t)
+        let count = tBuf.length / MemoryLayout<UInt16>.stride
+        let ptr = tBuf.contents().bindMemory(to: UInt16.self, capacity: count)
+        let h = HalfPrecision.floatToBits(t)
         for i in 0..<count { ptr[i] = h }
     }
 
@@ -288,8 +288,9 @@ final class BufferPool {
 
         // Initialize tBuf with t=0.5 so a default IFNetGraph.run() with the timestep arg omitted
         // yields the historical midframe; setTimestep(_:) overwrites this on every subsequent call.
-        let tPtr = _tBuf.contents().bindMemory(to: Float16.self, capacity: intW * intH)
-        for i in 0..<(intW * intH) { tPtr[i] = 0.5 }
+        let tPtr = _tBuf.contents().bindMemory(to: UInt16.self, capacity: intW * intH)
+        let defaultTimestep = HalfPrecision.floatToBits(0.5)
+        for i in 0..<(intW * intH) { tPtr[i] = defaultTimestep }
 
         if useInternalScale {
             guard let b0 = device.makeBuffer(length: intRGBBytes, options: .storageModeShared),

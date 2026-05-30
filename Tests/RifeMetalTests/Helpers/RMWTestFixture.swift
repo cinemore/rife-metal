@@ -1,4 +1,5 @@
 import Foundation
+@testable import RifeMetalCore
 
 /// Builds a minimal in-memory .rmw file for unit tests.
 /// Each tensor is a flat array of fp16 values; shape is honored only for size computation.
@@ -53,7 +54,7 @@ struct RMWTestFixture {
     private static func encodeFloat16(_ values: [Float]) -> Data {
         var data = Data(capacity: values.count * 2)
         for v in values {
-            let f16 = Float16(v)
+            let f16 = HalfPrecision.floatToBits(v).littleEndian
             withUnsafeBytes(of: f16) { data.append(contentsOf: $0) }
         }
         return data

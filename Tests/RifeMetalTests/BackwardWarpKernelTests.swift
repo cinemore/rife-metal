@@ -146,7 +146,7 @@ final class BackwardWarpKernelTests: XCTestCase {
             from: MTLRegionMake2D(0, 0, width, height),
             mipmapLevel: 0
         )
-        return bytes.map { Float(Float16(bitPattern: $0)) }
+        return bytes.map { HalfPrecision.bitsToFloat($0) }
     }
 
     private func makeRGBATexture(values: [Float], width: Int, height: Int) -> MTLTexture {
@@ -158,7 +158,7 @@ final class BackwardWarpKernelTests: XCTestCase {
         desc.usage = [.shaderRead]
         desc.storageMode = .shared
         let tex = device.makeTexture(descriptor: desc)!
-        let half = values.map { Float16($0).bitPattern }
+        let half = values.map { HalfPrecision.floatToBits($0) }
         half.withUnsafeBufferPointer { buf in
             tex.replace(region: MTLRegionMake2D(0, 0, width, height),
                         mipmapLevel: 0,
@@ -177,7 +177,7 @@ final class BackwardWarpKernelTests: XCTestCase {
         desc.usage = [.shaderRead]
         desc.storageMode = .shared
         let tex = device.makeTexture(descriptor: desc)!
-        let half = values.map { Float16($0).bitPattern }
+        let half = values.map { HalfPrecision.floatToBits($0) }
         half.withUnsafeBufferPointer { buf in
             tex.replace(region: MTLRegionMake2D(0, 0, width, height),
                         mipmapLevel: 0,
