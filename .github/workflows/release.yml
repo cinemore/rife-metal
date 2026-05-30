@@ -1,0 +1,118 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to build, for example v0.1.0"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish macOS CLI
+    runs-on: macos-14
+
+    env:
+      ARCHIVE_NAME: rife-metal-macos-universal
+
+    steps:
+      - name: Resolve release tag
+        id: release
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            tag="${{ inputs.tag }}"
+          else
+            tag="${GITHUB_REF_NAME}"
+          fi
+
+          if ! printf '%s' "$tag" | grep -Eq '^v[0-9]+(\.[0-9]+)*([-.][0-9A-Za-z.-]+)?$'; then
+            echo "Invalid release tag: $tag" >&2
+            exit 1
+          fi
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.release.outputs.tag }}
+          fetch-depth: 0
+
+      - name: Build arm64 binary
+        run: swift build -c release --arch arm64 --product rife-metal
+
+      - name: Build x86_64 binary
+        run: swift build -c release --arch x86_64 --product rife-metal
+
+      - name: Package release archive
+        run: |
+          set -euo pipefail
+
+          staging="$(mktemp -d)"
+          mkdir -p "$staging/${ARCHIVE_NAME}/bin" "$staging/${ARCHIVE_NAME}/share/rife-metal"
+
+          lipo -create \
+            .build/arm64-apple-macosx/release/rife-metal \
+            .build/x86_64-apple-macosx/release/rife-metal \
+            -output "$staging/${ARCHIVE_NAME}/bin/rife-metal"
+
+          chmod 755 "$staging/${ARCHIVE_NAME}/bin/rife-metal"
+          cp Sources/RifeMetal/Resources/rife-v4.26.rmw "$staging/${ARCHIVE_NAME}/share/rife-metal/"
+          cp LICENSE THIRD-PARTY.md "$staging/${ARCHIVE_NAME}/"
+
+          tar -C "$staging" -czf "${ARCHIVE_NAME}.tar.gz" "${ARCHIVE_NAME}"
+          shasum -a 256 "${ARCHIVE_NAME}.tar.gz" | tee "${ARCHIVE_NAME}.tar.gz.sha256"
+
+      - name: Publish GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${{ steps.release.outputs.tag }}"
+          gh release create "$tag" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$tag" \
+            --notes "macOS universal CLI release for $tag." \
+            "${ARCHIVE_NAME}.tar.gz" \
+            "${ARCHIVE_NAME}.tar.gz.sha256"
+
+      - name: Update Homebrew formula on default branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          tag="${{ steps.release.outputs.tag }}"
+          sha256="$(cut -d ' ' -f 1 "${ARCHIVE_NAME}.tar.gz.sha256")"
+          repo_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
+          asset_url="${repo_url}/releases/download/${tag}/${ARCHIVE_NAME}.tar.gz"
+          default_branch="${{ github.event.repository.default_branch }}"
+
+          git fetch origin "$default_branch"
+          git checkout "$default_branch"
+
+          ruby - "$asset_url" "$sha256" <<'RUBY'
+          path = "Formula/rife-metal.rb"
+          asset_url, sha256 = ARGV
+          formula = File.read(path)
+          formula = formula.sub(%r{url "https://github\.com/cinemore/rife-metal/releases/download/[^"]+"}, %(url "#{asset_url}"))
+          formula = formula.sub(/sha256 "[0-9a-f]{64}"/, %(sha256 "#{sha256}"))
+          File.write(path, formula)
+          RUBY
+
+          if git diff --quiet -- Formula/rife-metal.rb; then
+            echo "Formula already points at $tag"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/rife-metal.rb
+          git commit -m "chore: update Homebrew formula for ${tag}"
+          git push origin "HEAD:${default_branch}"

@@ -22,13 +22,44 @@ Input frames courtesy of [nihui/rife-ncnn-vulkan](https://github.com/nihui/rife-
 - Xcode 15.3+ / Swift 5.10+
 - Apple Silicon recommended (Intel + AMD eGPU should work but is not regularly tested)
 
-## Installation (Swift Package Manager)
+## Installation
+
+### Homebrew CLI
+
+```bash
+brew install cinemore/rife-metal/rife-metal
+```
+
+The Homebrew package installs the `rife-metal` binary plus the bundled
+`rife-v4.26.rmw` weights. When you do not pass `--model`, the Homebrew wrapper
+uses the installed bundled weights automatically:
+
+```bash
+rife-metal -0 frame_a.png -1 frame_b.png -o mid.png
+```
+
+To use custom weights, pass `--model /path/to/file.rmw`.
+
+### GitHub Release CLI
+
+Download `rife-metal-macos-universal.tar.gz` from the
+[latest release](https://github.com/cinemore/rife-metal/releases/latest), unpack
+it, and run the binary inside `bin/`:
+
+```bash
+tar -xzf rife-metal-macos-universal.tar.gz
+./rife-metal-macos-universal/bin/rife-metal \
+  -0 frame_a.png -1 frame_b.png -o mid.png \
+  -m rife-metal-macos-universal/share/rife-metal/rife-v4.26.rmw
+```
+
+### Swift Package Manager Library
 
 Add to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/xzhih/rife-metal.git", branch: "main"),
+    .package(url: "https://github.com/cinemore/rife-metal.git", branch: "main"),
 ],
 targets: [
     .target(
@@ -78,7 +109,7 @@ let interpolator = try RifeInterpolator(configuration: config)
   on large frames; sharpness preserved via final full-res warp+blend.
 - `.fast` — quarter-resolution internal grid. Targets 4K 30fps real-time.
 
-## CLI
+## CLI from source
 
 ```bash
 swift build -c release
