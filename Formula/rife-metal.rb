@@ -1,8 +1,8 @@
 class RifeMetal < Formula
   desc "Native Apple Silicon RIFE frame interpolation CLI"
   homepage "https://github.com/cinemore/rife-metal"
-  url "https://github.com/cinemore/rife-metal/releases/download/v0.1.0/rife-metal-macos-universal.tar.gz"
-  sha256 "5269c48524ad11b2348205bc7f88a9dd7183b441b634523162dd0f1e5b2f730d"
+  url "https://github.com/cinemore/rife-metal/releases/download/v0.1.0/rife-metal-macos-arm64.tar.gz"
+  sha256 "0000000000000000000000000000000000000000000000000000000000000000"
   license "Apache-2.0"
 
   depends_on macos: :ventura

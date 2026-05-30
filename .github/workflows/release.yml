@@ -20,7 +20,8 @@ jobs:
     runs-on: macos-14
 
     env:
-      ARCHIVE_NAME: rife-metal-macos-universal
+      ARM64_ARCHIVE_NAME: rife-metal-macos-arm64
+      UNIVERSAL_ARCHIVE_NAME: rife-metal-macos-universal
 
     steps:
       - name: Resolve release tag
@@ -40,7 +41,7 @@ jobs:
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
         with:
           ref: ${{ steps.release.outputs.tag }}
           fetch-depth: 0
@@ -56,19 +57,27 @@ jobs:
           set -euo pipefail
 
           staging="$(mktemp -d)"
-          mkdir -p "$staging/${ARCHIVE_NAME}/bin" "$staging/${ARCHIVE_NAME}/share/rife-metal"
+          mkdir -p "$staging/${ARM64_ARCHIVE_NAME}/bin" "$staging/${ARM64_ARCHIVE_NAME}/share/rife-metal"
+          mkdir -p "$staging/${UNIVERSAL_ARCHIVE_NAME}/bin" "$staging/${UNIVERSAL_ARCHIVE_NAME}/share/rife-metal"
+
+          cp .build/arm64-apple-macosx/release/rife-metal "$staging/${ARM64_ARCHIVE_NAME}/bin/rife-metal"
+          chmod 755 "$staging/${ARM64_ARCHIVE_NAME}/bin/rife-metal"
 
           lipo -create \
             .build/arm64-apple-macosx/release/rife-metal \
             .build/x86_64-apple-macosx/release/rife-metal \
-            -output "$staging/${ARCHIVE_NAME}/bin/rife-metal"
+            -output "$staging/${UNIVERSAL_ARCHIVE_NAME}/bin/rife-metal"
 
-          chmod 755 "$staging/${ARCHIVE_NAME}/bin/rife-metal"
-          cp Sources/RifeMetal/Resources/rife-v4.26.rmw "$staging/${ARCHIVE_NAME}/share/rife-metal/"
-          cp LICENSE THIRD-PARTY.md "$staging/${ARCHIVE_NAME}/"
+          chmod 755 "$staging/${UNIVERSAL_ARCHIVE_NAME}/bin/rife-metal"
+          cp Sources/RifeMetal/Resources/rife-v4.26.rmw "$staging/${ARM64_ARCHIVE_NAME}/share/rife-metal/"
+          cp Sources/RifeMetal/Resources/rife-v4.26.rmw "$staging/${UNIVERSAL_ARCHIVE_NAME}/share/rife-metal/"
+          cp LICENSE THIRD-PARTY.md "$staging/${ARM64_ARCHIVE_NAME}/"
+          cp LICENSE THIRD-PARTY.md "$staging/${UNIVERSAL_ARCHIVE_NAME}/"
 
-          tar -C "$staging" -czf "${ARCHIVE_NAME}.tar.gz" "${ARCHIVE_NAME}"
-          shasum -a 256 "${ARCHIVE_NAME}.tar.gz" | tee "${ARCHIVE_NAME}.tar.gz.sha256"
+          tar -C "$staging" -czf "${ARM64_ARCHIVE_NAME}.tar.gz" "${ARM64_ARCHIVE_NAME}"
+          tar -C "$staging" -czf "${UNIVERSAL_ARCHIVE_NAME}.tar.gz" "${UNIVERSAL_ARCHIVE_NAME}"
+          shasum -a 256 "${ARM64_ARCHIVE_NAME}.tar.gz" | tee "${ARM64_ARCHIVE_NAME}.tar.gz.sha256"
+          shasum -a 256 "${UNIVERSAL_ARCHIVE_NAME}.tar.gz" | tee "${UNIVERSAL_ARCHIVE_NAME}.tar.gz.sha256"
 
       - name: Publish GitHub Release
         env:
@@ -78,9 +87,11 @@ jobs:
           gh release create "$tag" \
             --repo "$GITHUB_REPOSITORY" \
             --title "$tag" \
-            --notes "macOS universal CLI release for $tag." \
-            "${ARCHIVE_NAME}.tar.gz" \
-            "${ARCHIVE_NAME}.tar.gz.sha256"
+            --notes "macOS CLI release for $tag. Use the arm64 package on Apple Silicon Macs; universal is also provided for Intel compatibility." \
+            "${ARM64_ARCHIVE_NAME}.tar.gz" \
+            "${ARM64_ARCHIVE_NAME}.tar.gz.sha256" \
+            "${UNIVERSAL_ARCHIVE_NAME}.tar.gz" \
+            "${UNIVERSAL_ARCHIVE_NAME}.tar.gz.sha256"
 
       - name: Update Homebrew formula on default branch
         env:
@@ -89,9 +100,9 @@ jobs:
           set -euo pipefail
 
           tag="${{ steps.release.outputs.tag }}"
-          sha256="$(cut -d ' ' -f 1 "${ARCHIVE_NAME}.tar.gz.sha256")"
+          sha256="$(cut -d ' ' -f 1 "${ARM64_ARCHIVE_NAME}.tar.gz.sha256")"
           repo_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
-          asset_url="${repo_url}/releases/download/${tag}/${ARCHIVE_NAME}.tar.gz"
+          asset_url="${repo_url}/releases/download/${tag}/${ARM64_ARCHIVE_NAME}.tar.gz"
           default_branch="${{ github.event.repository.default_branch }}"
 
           git fetch origin "$default_branch"

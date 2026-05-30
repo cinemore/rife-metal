@@ -42,15 +42,16 @@ To use custom weights, pass `--model /path/to/file.rmw`.
 
 ### GitHub Release CLI
 
-Download `rife-metal-macos-universal.tar.gz` from the
-[latest release](https://github.com/cinemore/rife-metal/releases/latest), unpack
-it, and run the binary inside `bin/`:
+Download `rife-metal-macos-arm64.tar.gz` from the
+[latest release](https://github.com/cinemore/rife-metal/releases/latest) for
+Apple Silicon Macs. A universal archive is also published for compatibility
+with Intel Macs.
 
 ```bash
-tar -xzf rife-metal-macos-universal.tar.gz
-./rife-metal-macos-universal/bin/rife-metal \
+tar -xzf rife-metal-macos-arm64.tar.gz
+./rife-metal-macos-arm64/bin/rife-metal \
   -0 frame_a.png -1 frame_b.png -o mid.png \
-  -m rife-metal-macos-universal/share/rife-metal/rife-v4.26.rmw
+  -m rife-metal-macos-arm64/share/rife-metal/rife-v4.26.rmw
 ```
 
 ### Swift Package Manager Library
