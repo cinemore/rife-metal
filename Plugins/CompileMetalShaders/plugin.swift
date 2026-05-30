@@ -18,6 +18,7 @@ struct CompileMetalShaders: BuildToolPlugin {
         guard !metalFiles.isEmpty else { return [] }
 
         let outputDir = context.pluginWorkDirectory.appending("MetalLib")
+        let moduleCacheDir = context.pluginWorkDirectory.appending("MetalModuleCache")
         let airFiles = metalFiles.map { metal -> Path in
             outputDir.appending(metal.stem + ".air")
         }
@@ -36,6 +37,7 @@ struct CompileMetalShaders: BuildToolPlugin {
                 executable: Path(metalPath),
                 arguments: [
                     "-c",
+                    "-fmodules-cache-path=\(moduleCacheDir.string)",
                     metal.string,
                     "-o", air.string,
                 ],
