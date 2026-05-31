@@ -1,6 +1,7 @@
 class RifeMetal < Formula
   desc "Native macOS RIFE frame interpolation CLI"
   homepage "https://github.com/cinemore/rife-metal"
+  version "0.1.2"
   license "Apache-2.0"
 
   depends_on macos: :ventura

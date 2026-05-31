@@ -27,7 +27,7 @@ Input frames courtesy of [nihui/rife-ncnn-vulkan](https://github.com/nihui/rife-
 ### Homebrew CLI
 
 ```bash
-brew install cinemore/rife-metal/rife-metal
+brew install cinemore/tap/rife-metal
 ```
 
 The Homebrew package installs the native binary for your Mac's CPU architecture
