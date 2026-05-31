@@ -6,11 +6,11 @@ class RifeMetal < Formula
   depends_on macos: :ventura
 
   if Hardware::CPU.arm?
-    url "https://github.com/cinemore/rife-metal/releases/download/v0.1.1/rife-metal-macos-arm64.tar.gz"
-    sha256 "058bed6b9f983c6c2f89f23ce0e44fb22cfe8f632cf5a26598e0438638650247"
+    url "https://github.com/cinemore/rife-metal/releases/download/v0.1.2/rife-metal-macos-arm64.tar.gz"
+    sha256 "4d74d9ca29b59c1654dd327de4765d2e592ec73bf5874c301b286d56cd09d854"
   else
-    url "https://github.com/cinemore/rife-metal/releases/download/v0.1.1/rife-metal-macos-x86_64.tar.gz"
-    sha256 "0000000000000000000000000000000000000000000000000000000000000000"
+    url "https://github.com/cinemore/rife-metal/releases/download/v0.1.2/rife-metal-macos-x86_64.tar.gz"
+    sha256 "ffa794a3d40500234367aeb475bf4606d53b048c92f3533e1a02928486911377"
   end
 
   def install
