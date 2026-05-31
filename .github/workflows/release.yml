@@ -21,6 +21,7 @@ jobs:
 
     env:
       ARM64_ARCHIVE_NAME: rife-metal-macos-arm64
+      X86_64_ARCHIVE_NAME: rife-metal-macos-x86_64
       UNIVERSAL_ARCHIVE_NAME: rife-metal-macos-universal
 
     steps:
@@ -58,10 +59,13 @@ jobs:
 
           staging="$(mktemp -d)"
           mkdir -p "$staging/${ARM64_ARCHIVE_NAME}/bin" "$staging/${ARM64_ARCHIVE_NAME}/share/rife-metal"
+          mkdir -p "$staging/${X86_64_ARCHIVE_NAME}/bin" "$staging/${X86_64_ARCHIVE_NAME}/share/rife-metal"
           mkdir -p "$staging/${UNIVERSAL_ARCHIVE_NAME}/bin" "$staging/${UNIVERSAL_ARCHIVE_NAME}/share/rife-metal"
 
           cp .build/arm64-apple-macosx/release/rife-metal "$staging/${ARM64_ARCHIVE_NAME}/bin/rife-metal"
+          cp .build/x86_64-apple-macosx/release/rife-metal "$staging/${X86_64_ARCHIVE_NAME}/bin/rife-metal"
           chmod 755 "$staging/${ARM64_ARCHIVE_NAME}/bin/rife-metal"
+          chmod 755 "$staging/${X86_64_ARCHIVE_NAME}/bin/rife-metal"
 
           lipo -create \
             .build/arm64-apple-macosx/release/rife-metal \
@@ -70,13 +74,17 @@ jobs:
 
           chmod 755 "$staging/${UNIVERSAL_ARCHIVE_NAME}/bin/rife-metal"
           cp Sources/RifeMetal/Resources/rife-v4.26.rmw "$staging/${ARM64_ARCHIVE_NAME}/share/rife-metal/"
+          cp Sources/RifeMetal/Resources/rife-v4.26.rmw "$staging/${X86_64_ARCHIVE_NAME}/share/rife-metal/"
           cp Sources/RifeMetal/Resources/rife-v4.26.rmw "$staging/${UNIVERSAL_ARCHIVE_NAME}/share/rife-metal/"
           cp LICENSE THIRD-PARTY.md "$staging/${ARM64_ARCHIVE_NAME}/"
+          cp LICENSE THIRD-PARTY.md "$staging/${X86_64_ARCHIVE_NAME}/"
           cp LICENSE THIRD-PARTY.md "$staging/${UNIVERSAL_ARCHIVE_NAME}/"
 
           tar -C "$staging" -czf "${ARM64_ARCHIVE_NAME}.tar.gz" "${ARM64_ARCHIVE_NAME}"
+          tar -C "$staging" -czf "${X86_64_ARCHIVE_NAME}.tar.gz" "${X86_64_ARCHIVE_NAME}"
           tar -C "$staging" -czf "${UNIVERSAL_ARCHIVE_NAME}.tar.gz" "${UNIVERSAL_ARCHIVE_NAME}"
           shasum -a 256 "${ARM64_ARCHIVE_NAME}.tar.gz" | tee "${ARM64_ARCHIVE_NAME}.tar.gz.sha256"
+          shasum -a 256 "${X86_64_ARCHIVE_NAME}.tar.gz" | tee "${X86_64_ARCHIVE_NAME}.tar.gz.sha256"
           shasum -a 256 "${UNIVERSAL_ARCHIVE_NAME}.tar.gz" | tee "${UNIVERSAL_ARCHIVE_NAME}.tar.gz.sha256"
 
       - name: Publish GitHub Release
@@ -87,9 +95,11 @@ jobs:
           gh release create "$tag" \
             --repo "$GITHUB_REPOSITORY" \
             --title "$tag" \
-            --notes "macOS CLI release for $tag. Use the arm64 package on Apple Silicon Macs; universal is also provided for Intel compatibility." \
+            --notes "macOS CLI release for $tag. Use arm64 on Apple Silicon Macs, x86_64 on Intel Macs, or universal when one archive must cover both." \
             "${ARM64_ARCHIVE_NAME}.tar.gz" \
             "${ARM64_ARCHIVE_NAME}.tar.gz.sha256" \
+            "${X86_64_ARCHIVE_NAME}.tar.gz" \
+            "${X86_64_ARCHIVE_NAME}.tar.gz.sha256" \
             "${UNIVERSAL_ARCHIVE_NAME}.tar.gz" \
             "${UNIVERSAL_ARCHIVE_NAME}.tar.gz.sha256"
 
@@ -100,20 +110,24 @@ jobs:
           set -euo pipefail
 
           tag="${{ steps.release.outputs.tag }}"
-          sha256="$(cut -d ' ' -f 1 "${ARM64_ARCHIVE_NAME}.tar.gz.sha256")"
+          arm64_sha256="$(cut -d ' ' -f 1 "${ARM64_ARCHIVE_NAME}.tar.gz.sha256")"
+          x86_64_sha256="$(cut -d ' ' -f 1 "${X86_64_ARCHIVE_NAME}.tar.gz.sha256")"
           repo_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
-          asset_url="${repo_url}/releases/download/${tag}/${ARM64_ARCHIVE_NAME}.tar.gz"
+          arm64_asset_url="${repo_url}/releases/download/${tag}/${ARM64_ARCHIVE_NAME}.tar.gz"
+          x86_64_asset_url="${repo_url}/releases/download/${tag}/${X86_64_ARCHIVE_NAME}.tar.gz"
           default_branch="${{ github.event.repository.default_branch }}"
 
           git fetch origin "$default_branch"
           git checkout "$default_branch"
 
-          ruby - "$asset_url" "$sha256" <<'RUBY'
+          ruby - "$arm64_asset_url" "$arm64_sha256" "$x86_64_asset_url" "$x86_64_sha256" <<'RUBY'
           path = "Formula/rife-metal.rb"
-          asset_url, sha256 = ARGV
+          arm64_asset_url, arm64_sha256, x86_64_asset_url, x86_64_sha256 = ARGV
           formula = File.read(path)
-          formula = formula.sub(%r{url "https://github\.com/cinemore/rife-metal/releases/download/[^"]+"}, %(url "#{asset_url}"))
-          formula = formula.sub(/sha256 "[0-9a-f]{64}"/, %(sha256 "#{sha256}"))
+          formula = formula.sub(%r{url "https://github\.com/cinemore/rife-metal/releases/download/[^"]+/rife-metal-macos-arm64\.tar\.gz"}, %(url "#{arm64_asset_url}"))
+          formula = formula.sub(%r{sha256 "[0-9a-f]{64}"\n  else}, %(sha256 "#{arm64_sha256}"\n  else))
+          formula = formula.sub(%r{url "https://github\.com/cinemore/rife-metal/releases/download/[^"]+/rife-metal-macos-x86_64\.tar\.gz"}, %(url "#{x86_64_asset_url}"))
+          formula = formula.sub(%r{sha256 "[0-9a-f]{64}"\n  end}, %(sha256 "#{x86_64_sha256}"\n  end))
           File.write(path, formula)
           RUBY
 

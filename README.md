@@ -20,7 +20,7 @@ Input frames courtesy of [nihui/rife-ncnn-vulkan](https://github.com/nihui/rife-
 
 - macOS 13+ (iOS 16+ targets compile but are not yet runtime-validated)
 - Xcode 15.3+ / Swift 5.10+
-- Apple Silicon recommended (Intel + AMD eGPU should work but is not regularly tested)
+- Apple Silicon recommended; Intel Macs are supported on macOS 13-26
 
 ## Installation
 
@@ -30,9 +30,11 @@ Input frames courtesy of [nihui/rife-ncnn-vulkan](https://github.com/nihui/rife-
 brew install cinemore/rife-metal/rife-metal
 ```
 
-The Homebrew package installs the `rife-metal` binary plus the bundled
-`rife-v4.26.rmw` weights. When you do not pass `--model`, the Homebrew wrapper
-uses the installed bundled weights automatically:
+The Homebrew package installs the native binary for your Mac's CPU architecture
+plus the bundled `rife-v4.26.rmw` weights. Apple Silicon Macs receive the
+`arm64` archive; Intel Macs receive the `x86_64` archive. When you do not pass
+`--model`, the Homebrew wrapper uses the installed bundled weights
+automatically:
 
 ```bash
 rife-metal -0 frame_a.png -1 frame_b.png -o mid.png
@@ -42,10 +44,12 @@ To use custom weights, pass `--model /path/to/file.rmw`.
 
 ### GitHub Release CLI
 
-Download `rife-metal-macos-arm64.tar.gz` from the
-[latest release](https://github.com/cinemore/rife-metal/releases/latest) for
-Apple Silicon Macs. A universal archive is also published for compatibility
-with Intel Macs.
+Download the archive for your Mac from the
+[latest release](https://github.com/cinemore/rife-metal/releases/latest):
+
+- `rife-metal-macos-arm64.tar.gz` for Apple Silicon Macs.
+- `rife-metal-macos-x86_64.tar.gz` for Intel Macs.
+- `rife-metal-macos-universal.tar.gz` when one archive must cover both.
 
 ```bash
 tar -xzf rife-metal-macos-arm64.tar.gz
