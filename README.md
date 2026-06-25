@@ -1,5 +1,7 @@
 # RifeMetal
 
+[English](./README.md) | [简体中文](./README-zh.md)
+
 Native Apple Silicon RIFE frame interpolation — Swift Package + CLI.
 Uses MPSGraph + a custom Metal warp kernel; no Vulkan/MoltenVK dependency.
 
