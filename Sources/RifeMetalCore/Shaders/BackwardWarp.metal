@@ -1,6 +1,47 @@
 #include <metal_stdlib>
 using namespace metal;
 
+// 复现 half 加法的中点远离零舍入，避免跨后端的中点舍入差异。
+inline half rifeAddHalf(half a, half b, uint tiesAway) {
+    float sum = float(a) + float(b);
+    if (tiesAway == 0) return half(sum);
+    uint bits = as_type<uint>(sum);
+    ushort sign = ushort((bits >> 16) & 0x8000u);
+    uint mantissa = bits & 0x7fffffu;
+    int exponent = int((bits >> 23) & 0xffu) - 127 + 15;
+    ushort result;
+    if (exponent >= 31) {
+        result = ushort(sign | 0x7c00u | (((bits & 0x7f800000u) == 0x7f800000u && mantissa != 0) ? 0x200u : 0u));
+    } else if (exponent <= 0) {
+        if (exponent < -10) result = sign;
+        else {
+            uint shift = uint(14 - exponent);
+            result = ushort(sign | ushort(((mantissa | 0x800000u) + (1u << (shift - 1))) >> shift));
+        }
+    } else {
+        result = ushort(sign | ushort((uint(exponent) << 10) + ((mantissa + 0x1000u) >> 13)));
+    }
+    return as_type<half>(result);
+}
+
+kernel void rifeAccumulateFlowMaskRNA(
+    device const half4* previousFlow [[buffer(0)]],
+    device const half4* deltaFlow [[buffer(1)]],
+    device half4* outputFlow [[buffer(2)]],
+    device const half* previousMask [[buffer(3)]],
+    device const half* deltaMask [[buffer(4)]],
+    device half* outputMask [[buffer(5)]],
+    constant uint2& dimensions [[buffer(6)]],
+    constant uint2& rounding [[buffer(7)]],
+    uint2 gid [[thread_position_in_grid]]) {
+    if (gid.x >= dimensions.x || gid.y >= dimensions.y) return;
+    uint index = gid.y * dimensions.x + gid.x;
+    half4 a = previousFlow[index], b = deltaFlow[index];
+    outputFlow[index] = half4(rifeAddHalf(a.x,b.x,rounding.x), rifeAddHalf(a.y,b.y,rounding.x),
+                             rifeAddHalf(a.z,b.z,rounding.x), rifeAddHalf(a.w,b.w,rounding.x));
+    outputMask[index] = rifeAddHalf(previousMask[index], deltaMask[index], rounding.y);
+}
+
 /// Backward warp: output[x, y] = source(x + flow.x, y + flow.y) with bilinear filtering.
 /// Flow is in pixel units. Boundary is clamp-to-edge (matches PyTorch grid_sample padding_mode='border').
 ///
@@ -163,6 +204,51 @@ kernel void rifeBlendUpsampleMaskAndPack(
 ) {
     uint W = output.get_width(), H = output.get_height();
     if (gid.x >= W || gid.y >= H) return;
+
+    uint flatIdx = gid.y * W + gid.x;
+    uint rgbBase = flatIdx * 3;
+
+    half3 w0 = half3(warped0[rgbBase + 0], warped0[rgbBase + 1], warped0[rgbBase + 2]);
+    half3 w1 = half3(warped1[rgbBase + 0], warped1[rgbBase + 1], warped1[rgbBase + 2]);
+
+    int iW = int(internalDim.x);
+    int iH = int(internalDim.y);
+    float u = (float(gid.x) + 0.5) * float(iW) / float(W) - 0.5;
+    float v = (float(gid.y) + 0.5) * float(iH) / float(H) - 0.5;
+    int u0 = int(floor(u));
+    int v0 = int(floor(v));
+    float du = u - float(u0);
+    float dv = v - float(v0);
+    int u1 = min(u0 + 1, iW - 1);
+    int v1 = min(v0 + 1, iH - 1);
+    u0 = max(u0, 0);
+    v0 = max(v0, 0);
+
+    float m00 = float(maskInternal[v0 * iW + u0]);
+    float m01 = float(maskInternal[v0 * iW + u1]);
+    float m10 = float(maskInternal[v1 * iW + u0]);
+    float m11 = float(maskInternal[v1 * iW + u1]);
+    float m = mix(mix(m00, m01, du), mix(m10, m11, du), dv);
+
+    half mh = half(m);
+    half mSig = 1.0h / (1.0h + exp(-mh));
+
+    half3 blended = w0 * mSig + w1 * (1.0h - mSig);
+    output.write(half4(blended.r, blended.g, blended.b, 1.0h), gid);
+}
+
+// 裁剪只限制输出区域，张量索引和 mask 重采样仍使用 padded 网格。
+kernel void rifeBlendUpsampleMaskAndPackCropped(
+    device const half *warped0       [[buffer(0)]],
+    device const half *warped1       [[buffer(1)]],
+    device const half *maskInternal  [[buffer(2)]],   // pre-sigmoid logits, [1, iH, iW, 1]
+    constant uint2 &internalDim      [[buffer(3)]],   // (iW, iH)
+    constant uint2 &sourceDim [[buffer(4)]],
+    texture2d<half, access::write> output [[texture(0)]],
+    uint2 gid                        [[thread_position_in_grid]]
+) {
+    uint W = sourceDim.x, H = sourceDim.y;
+    if (gid.x >= output.get_width() || gid.y >= output.get_height()) return;
 
     uint flatIdx = gid.y * W + gid.x;
     uint rgbBase = flatIdx * 3;

@@ -174,7 +174,8 @@ public final class RifeInterpolator: @unchecked Sendable {
 
     internal func padPixelBufferForStream(_ buffer: CVPixelBuffer,
                                           paddedW: Int,
-                                          paddedH: Int) throws -> CVPixelBuffer {
+                                          paddedH: Int,
+                                          reusing destination: CVPixelBuffer? = nil) throws -> CVPixelBuffer {
         let srcW = CVPixelBufferGetWidth(buffer)
         let srcH = CVPixelBufferGetHeight(buffer)
         if srcW == paddedW && srcH == paddedH { return buffer }
@@ -186,11 +187,11 @@ public final class RifeInterpolator: @unchecked Sendable {
             kCVPixelBufferMetalCompatibilityKey as String: true,
             kCVPixelBufferIOSurfacePropertiesKey as String: [:] as [String: Any],
         ]
-        var dst: CVPixelBuffer?
-        let err = CVPixelBufferCreate(kCFAllocatorDefault,
+        var dst = destination
+        let err = dst == nil ? CVPixelBufferCreate(kCFAllocatorDefault,
                                       paddedW, paddedH,
                                       kCVPixelFormatType_32BGRA,
-                                      attrs as CFDictionary, &dst)
+                                      attrs as CFDictionary, &dst) : kCVReturnSuccess
         guard err == kCVReturnSuccess, let dst else {
             throw RifeError.inferenceFailed("padPixelBuffer: CVPixelBufferCreate failed: \(err)")
         }

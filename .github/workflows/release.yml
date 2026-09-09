@@ -23,6 +23,7 @@ jobs:
       ARM64_ARCHIVE_NAME: rife-metal-macos-arm64
       X86_64_ARCHIVE_NAME: rife-metal-macos-x86_64
       UNIVERSAL_ARCHIVE_NAME: rife-metal-macos-universal
+      RESOURCE_BUNDLE_NAME: RifeMetal_RifeMetalCore.bundle
 
     steps:
       - name: Resolve release tag
@@ -73,6 +74,9 @@ jobs:
             -output "$staging/${UNIVERSAL_ARCHIVE_NAME}/bin/rife-metal"
 
           chmod 755 "$staging/${UNIVERSAL_ARCHIVE_NAME}/bin/rife-metal"
+          cp -R ".build/arm64-apple-macosx/release/${RESOURCE_BUNDLE_NAME}" "$staging/${ARM64_ARCHIVE_NAME}/bin/"
+          cp -R ".build/x86_64-apple-macosx/release/${RESOURCE_BUNDLE_NAME}" "$staging/${X86_64_ARCHIVE_NAME}/bin/"
+          cp -R ".build/arm64-apple-macosx/release/${RESOURCE_BUNDLE_NAME}" "$staging/${UNIVERSAL_ARCHIVE_NAME}/bin/"
           cp Sources/RifeMetal/Resources/rife-v4.26.rmw "$staging/${ARM64_ARCHIVE_NAME}/share/rife-metal/"
           cp Sources/RifeMetal/Resources/rife-v4.26.rmw "$staging/${X86_64_ARCHIVE_NAME}/share/rife-metal/"
           cp Sources/RifeMetal/Resources/rife-v4.26.rmw "$staging/${UNIVERSAL_ARCHIVE_NAME}/share/rife-metal/"
@@ -86,6 +90,20 @@ jobs:
           shasum -a 256 "${ARM64_ARCHIVE_NAME}.tar.gz" | tee "${ARM64_ARCHIVE_NAME}.tar.gz.sha256"
           shasum -a 256 "${X86_64_ARCHIVE_NAME}.tar.gz" | tee "${X86_64_ARCHIVE_NAME}.tar.gz.sha256"
           shasum -a 256 "${UNIVERSAL_ARCHIVE_NAME}.tar.gz" | tee "${UNIVERSAL_ARCHIVE_NAME}.tar.gz.sha256"
+
+      - name: Verify packaged CLI resources
+        run: |
+          set -euo pipefail
+          staging="$(mktemp -d)"
+          if [ "$(uname -m)" = "arm64" ]; then
+            archive="${ARM64_ARCHIVE_NAME}"
+          else
+            archive="${X86_64_ARCHIVE_NAME}"
+          fi
+          tar -xzf "${archive}.tar.gz" -C "$staging"
+          test -s "$staging/${archive}/share/rife-metal/rife-v4.26.rmw"
+          test -n "$(find "$staging/${archive}/bin/${RESOURCE_BUNDLE_NAME}" -name default.metallib -type f -print -quit)"
+          "$staging/${archive}/bin/rife-metal" --help
 
       - name: Publish GitHub Release
         env:
@@ -128,6 +146,11 @@ jobs:
           ruby - "$tap_dir/Formula/rife-metal.rb" "$version" "$arm64_asset_url" "$arm64_sha256" "$x86_64_asset_url" "$x86_64_sha256" <<'RUBY'
           path, version, arm64_asset_url, arm64_sha256, x86_64_asset_url, x86_64_sha256 = ARGV
           formula = File.read(path)
+          unless formula.include?('libexec.install "bin/RifeMetal_RifeMetalCore.bundle"')
+            anchor = '    libexec.install "bin/rife-metal"'
+            raise "Missing RIFE binary install rule" unless formula.include?(anchor)
+            formula = formula.sub(anchor, anchor + "\n    libexec.install \"bin/RifeMetal_RifeMetalCore.bundle\"")
+          end
           formula = formula.sub(%r{version "[^"]+"}, %(version "#{version}"))
           formula = formula.sub(%r{url "https://github\.com/cinemore/rife-metal/releases/download/[^"]+/rife-metal-macos-arm64\.tar\.gz"}, %(url "#{arm64_asset_url}"))
           formula = formula.sub(%r{sha256 "[0-9a-f]{64}"\n  else}, %(sha256 "#{arm64_sha256}"\n  else))

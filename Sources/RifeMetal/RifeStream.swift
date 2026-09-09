@@ -9,6 +9,7 @@ import RifeMetalCore
 /// Created via `RifeInterpolator.makeStream(width:height:)`. Not
 /// thread-safe — caller must serialize push/reset on a single instance.
 public final class RifeStream: @unchecked Sendable {
+    private var paddedInputBuffer: CVPixelBuffer?
 
     public let width: Int
     public let height: Int
@@ -78,14 +79,14 @@ public final class RifeStream: @unchecked Sendable {
         }
 
         return try queue.sync { () -> [CVPixelBuffer] in
+            do {
             try ensureCacheAllocated()
 
             // Pad input if needed.
             let needsPad = (paddedW != width) || (paddedH != height)
             let paddedFrame: CVPixelBuffer
             if needsPad {
-                paddedFrame = try interpolator.padPixelBufferForStream(
-                    frame, paddedW: paddedW, paddedH: paddedH)
+                paddedFrame = try paddedInput(frame)
             } else {
                 paddedFrame = frame
             }
@@ -130,6 +131,11 @@ public final class RifeStream: @unchecked Sendable {
                 return cropped
             }
             return outBuffers
+            } catch {
+                // 失败时不能假定所有已提交的 GPU 工作都已结束。
+                paddedInputBuffer = nil
+                throw error
+            }
         }
     }
 
@@ -171,13 +177,13 @@ public final class RifeStream: @unchecked Sendable {
         }
 
         return try queue.sync { () -> Bool in
+            do {
             try ensureCacheAllocated()
 
             let needsPad = (paddedW != width) || (paddedH != height)
             let paddedFrame: CVPixelBuffer
             if needsPad {
-                paddedFrame = try interpolator.padPixelBufferForStream(
-                    frame, paddedW: paddedW, paddedH: paddedH)
+                paddedFrame = try paddedInput(frame)
             } else {
                 paddedFrame = frame
             }
@@ -189,7 +195,7 @@ public final class RifeStream: @unchecked Sendable {
                 return false
             }
 
-            if needsPad {
+            if needsPad && (!graph.supportsCroppedOutput || outFmt != kCVPixelFormatType_32BGRA || CVPixelBufferGetIOSurface(output) == nil) {
                 // Allocate padded interim output, run inference into it, crop
                 // into caller's output. (Same shape as stateless interpolate's
                 // padded path.)
@@ -201,11 +207,16 @@ public final class RifeStream: @unchecked Sendable {
                 try interpolator.cropPixelBufferForStream(paddedOut, into: output)
             } else {
                 // Fast path: GPU writes directly into caller's output.
+                // Balanced 的可绑定 BGRA 输出直接裁剪写入，其他档位和缓冲保留原路径。
                 try runStreamAndRotate(curr: paddedFrame,
                                        timesteps: [0.5],
                                        outputs: [output])
             }
             return true
+            } catch {
+                paddedInputBuffer = nil
+                throw error
+            }
         }
     }
 
@@ -213,6 +224,16 @@ public final class RifeStream: @unchecked Sendable {
     /// first-frame path. Cache buffers are retained for reuse.
     public func reset() {
         hasCachedPrev = false
+        paddedInputBuffer = nil
+    }
+
+    // push 在串行队列内等待 GPU 完成，下一帧才可以覆盖这份输入。
+    private func paddedInput(_ frame: CVPixelBuffer) throws -> CVPixelBuffer {
+        if paddedInputBuffer == nil {
+            paddedInputBuffer = try PixelBufferConvert.makeOutputPixelBuffer(width: paddedW, height: paddedH)
+        }
+        return try interpolator.padPixelBufferForStream(frame, paddedW: paddedW, paddedH: paddedH,
+                                                        reusing: paddedInputBuffer)
     }
 
     /// Encodes `paddedFrame` into the curr slot's buffers and rotates `prevSlot`

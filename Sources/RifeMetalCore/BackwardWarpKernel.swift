@@ -85,6 +85,7 @@ public final class BackwardWarpKernel {
 
 /// Compiles and exposes the BGRA↔RGB conversion kernels and supporting helpers.
 public final class ConversionKernels {
+    public let accumulateFlowMask: MTLComputePipelineState
     public let bgraToRGB: MTLComputePipelineState
     public let rgbToBGRA: MTLComputePipelineState
     /// Split a [1,H,W,4] fp16 flow buffer into two RG16Float textures.
@@ -97,6 +98,7 @@ public final class ConversionKernels {
     public let bgraDownsampleToRGB: MTLComputePipelineState
     /// Fused blend + sigmoid + RGB→BGRA pack (full res, replaces blendExecutable+rgbToBGRA pair).
     public let blendAndPack: MTLComputePipelineState
+    public let blendUpsampleMaskAndPackCropped: MTLComputePipelineState
     /// Fused bilinear upsample + flow split (balanced tier final flow).
     public let flowUpsampleSplit: MTLComputePipelineState
     /// Fused mask-upsample + blend + RGB→BGRA pack (balanced tier final blend).
@@ -126,6 +128,10 @@ public final class ConversionKernels {
               let f11 = library.makeFunction(name: "rifeRGBATexTo4ChBuf") else {
             throw BackwardWarpError.shaderNotFound
         }
+        guard let accumulate = library.makeFunction(name: "rifeAccumulateFlowMaskRNA") else {
+            throw BackwardWarpError.shaderNotFound
+        }
+        self.accumulateFlowMask = try device.makeComputePipelineState(function: accumulate)
         self.bgraToRGB = try device.makeComputePipelineState(function: f1)
         self.rgbToBGRA = try device.makeComputePipelineState(function: f2)
         self.flowSplit = try device.makeComputePipelineState(function: f3)
@@ -133,6 +139,10 @@ public final class ConversionKernels {
         self.rgbaTexToRGBBuf = try device.makeComputePipelineState(function: f5)
         self.bgraDownsampleToRGB = try device.makeComputePipelineState(function: f6)
         self.blendAndPack = try device.makeComputePipelineState(function: f7)
+        guard let croppedMask = library.makeFunction(name: "rifeBlendUpsampleMaskAndPackCropped") else {
+            throw BackwardWarpError.shaderNotFound
+        }
+        self.blendUpsampleMaskAndPackCropped = try device.makeComputePipelineState(function: croppedMask)
         self.flowUpsampleSplit = try device.makeComputePipelineState(function: f8)
         self.blendUpsampleMaskAndPack = try device.makeComputePipelineState(function: f9)
         self.rgba4BufToRGBATex = try device.makeComputePipelineState(function: f10)

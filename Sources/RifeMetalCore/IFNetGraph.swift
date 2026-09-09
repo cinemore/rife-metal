@@ -15,6 +15,7 @@ public enum IFNetError: Error {
 /// One instance is bound to a fixed (width, height, internalScale); rebuild for new
 /// resolutions or new tiers.
 public final class IFNetGraph {
+    private var accumulationRounding: SIMD2<UInt32>?
 
     package let context: InferenceContext
     private let weights: WeightStore
@@ -26,6 +27,8 @@ public final class IFNetGraph {
     private let internalHeight: Int
     private let internalScale: Double
     private let scaleList: [Int]
+    // 仅 Balanced 融合裁剪；空阶段模型仍使用完整尺寸的转换回退。
+    package var supportsCroppedOutput: Bool { internalScale == 0.5 && !scaleList.isEmpty }
     private let textureCache: CVMetalTextureCache
 
     /// Pre-allocated buffer/texture pool — eliminates per-call GPU heap traffic.
@@ -144,6 +147,69 @@ public final class IFNetGraph {
             shape: [1, NSNumber(value: intH), NSNumber(value: intW), 1],
             name: "addMask"
         )
+        // 编译后只探测一次真实后端的舍入；未知行为保留原 graph，不能按设备猜测。
+        if internalScale <= 0.5,
+           let flow = Self.probeAdditionRounding(context: context, executable: addFlowExecutable, width: intW, height: intH, channels: 4),
+           let mask = Self.probeAdditionRounding(context: context, executable: addMaskExecutable, width: intW, height: intH, channels: 1) {
+            accumulationRounding = SIMD2(flow, mask)
+        }
+    }
+
+    private static func probeAdditionRounding(context: InferenceContext, executable: MPSGraphExecutable,
+                                              width: Int, height: Int, channels: Int) -> UInt32? {
+        let count = width * height * channels
+        guard let a = context.device.makeBuffer(length: count * 2, options: .storageModeShared),
+              let b = context.device.makeBuffer(length: count * 2, options: .storageModeShared),
+              let output = context.device.makeBuffer(length: count * 2, options: .storageModeShared),
+              let rawCommand = context.commandQueue.makeCommandBuffer() else { return nil }
+        let ap = a.contents().bindMemory(to: UInt16.self, capacity: count)
+        let bp = b.contents().bindMemory(to: UInt16.self, capacity: count)
+        // 输入及符号模式每 63486 个元素完整重复；只计算一个周期，仍校验全部输出。
+        let patternCount = min(count, 0x7bff * 2)
+        var evenPattern = [UInt16](repeating: 0, count: patternCount)
+        var awayPattern = [UInt16](repeating: 0, count: patternCount)
+        for i in 0..<patternCount {
+            ap[i] = UInt16((i * 73) % 0x7bff) | (i.isMultiple(of: 2) ? 0x8000 : 0)
+            bp[i] = UInt16((i * 193 + 79) % 0x7bff) | (i.isMultiple(of: 3) ? 0x8000 : 0)
+            let exact = Float(Float16(bitPattern: ap[i])) + Float(Float16(bitPattern: bp[i]))
+            let even = Float16(exact).bitPattern
+            var away = even
+            let magnitude = abs(Float(Float16(bitPattern: even)))
+            if magnitude < abs(exact), even & 0x7fff < 0x7bff {
+                let next = Float(Float16(bitPattern: (even & 0x7fff) + 1))
+                if abs(exact) == (magnitude + next) / 2 { away = even + 1 }
+            }
+            evenPattern[i] = even
+            awayPattern[i] = away
+        }
+        var offset = patternCount
+        while offset < count {
+            let length = min(patternCount, count - offset)
+            ap.advanced(by: offset).update(from: ap, count: length)
+            bp.advanced(by: offset).update(from: bp, count: length)
+            offset += length
+        }
+        let shape: [NSNumber] = [1, NSNumber(value: height), NSNumber(value: width), NSNumber(value: channels)]
+        let command = MPSCommandBuffer(commandBuffer: rawCommand)
+        _ = executable.encode(to: command,
+                              inputs: [MPSGraphTensorData(a, shape: shape, dataType: .float16), MPSGraphTensorData(b, shape: shape, dataType: .float16)],
+                              results: [MPSGraphTensorData(output, shape: shape, dataType: .float16)], executionDescriptor: nil)
+        command.commit()
+        command.waitUntilCompleted()
+        guard command.commandBuffer.status == .completed else { return nil }
+        let values = output.contents().bindMemory(to: UInt16.self, capacity: count)
+        func matches(_ pattern: [UInt16]) -> Bool {
+            pattern.withUnsafeBufferPointer { expected in
+                var offset = 0
+                while offset < count {
+                    let length = min(patternCount, count - offset)
+                    if memcmp(values.advanced(by: offset), expected.baseAddress!, length * 2) != 0 { return false }
+                    offset += length
+                }
+                return true
+            }
+        }
+        return matches(evenPattern) ? 0 : matches(awayPattern) ? 1 : nil
     }
 
     /// Compiles a tiny element-wise addition graph for a fixed shape, ready to encode onto a command buffer.
@@ -881,6 +947,13 @@ public final class IFNetGraph {
                           outputs:        [CVPixelBuffer]) throws {
         precondition(timesteps.count == outputs.count,
                      "timesteps and outputs must have matching counts")
+        // 输出可以裁剪，但不得超出完整推理网格。
+        guard outputs.allSatisfy({ output in
+            let w = CVPixelBufferGetWidth(output), h = CVPixelBufferGetHeight(output)
+            return (w == width && h == height) || (supportsCroppedOutput && w <= width && h <= height)
+        }) else {
+            throw IFNetError.dimensionsMismatch
+        }
         for t in timesteps {
             precondition(t > 0 && t < 1,
                          "timestep \(t) out of (0, 1)")
@@ -1147,14 +1220,32 @@ public final class IFNetGraph {
                         newMaskAccBuf = p.maskAccBufA
                     }
 
-                    _ = addFlowExecutable.encode(to: mpsCB,
-                                                  inputs: [prevFlowTD, flowRawTD],
-                                                  results: [newFlowAccTD],
-                                                  executionDescriptor: nil)
-                    _ = addMaskExecutable.encode(to: mpsCB,
-                                                  inputs: [prevMaskTD, maskRawTD],
-                                                  results: [newMaskAccTD],
-                                                  executionDescriptor: nil)
+                    if var rounding = accumulationRounding {
+                        guard let encoder = mpsCB.commandBuffer.makeComputeCommandEncoder() else {
+                            throw IFNetError.commandBufferFailed("flow/mask accumulation encoder failed")
+                        }
+                        encoder.setComputePipelineState(conv.accumulateFlowMask)
+                        encoder.setBuffer(accFlowBuf!, offset: 0, index: 0)
+                        encoder.setBuffer(p.flowRawBuf, offset: 0, index: 1)
+                        encoder.setBuffer(newFlowAccBuf, offset: 0, index: 2)
+                        encoder.setBuffer(accMaskBuf!, offset: 0, index: 3)
+                        encoder.setBuffer(p.maskRawBuf, offset: 0, index: 4)
+                        encoder.setBuffer(newMaskAccBuf, offset: 0, index: 5)
+                        var dimensions = SIMD2<UInt32>(UInt32(intW), UInt32(intH))
+                        encoder.setBytes(&dimensions, length: MemoryLayout<SIMD2<UInt32>>.size, index: 6)
+                        encoder.setBytes(&rounding, length: MemoryLayout<SIMD2<UInt32>>.size, index: 7)
+                        dispatch2D(encoder, conv.accumulateFlowMask, gridW: intW, gridH: intH)
+                        encoder.endEncoding()
+                    } else {
+                        _ = addFlowExecutable.encode(to: mpsCB,
+                                                      inputs: [prevFlowTD, flowRawTD],
+                                                      results: [newFlowAccTD],
+                                                      executionDescriptor: nil)
+                        _ = addMaskExecutable.encode(to: mpsCB,
+                                                      inputs: [prevMaskTD, maskRawTD],
+                                                      results: [newMaskAccTD],
+                                                      executionDescriptor: nil)
+                    }
 
                     accFlowTD    = newFlowAccTD
                     accMaskTD    = newMaskAccTD
@@ -1293,15 +1384,21 @@ public final class IFNetGraph {
                                  output: p.finalWarped1Buf,
                                  width: width, height: height)
 
+            let cropped = outTex.width != width || outTex.height != height
+            let blendMask = cropped ? conv.blendUpsampleMaskAndPackCropped : conv.blendUpsampleMaskAndPack
+            if cropped {
+                var sourceDim = SIMD2<UInt32>(UInt32(width), UInt32(height))
+                finalEnc.setBytes(&sourceDim, length: MemoryLayout<SIMD2<UInt32>>.stride, index: 4)
+            }
             if useInternalScale {
-                finalEnc.setComputePipelineState(conv.blendUpsampleMaskAndPack)
+                finalEnc.setComputePipelineState(blendMask)
                 finalEnc.setBuffer(p.finalWarped0Buf, offset: 0, index: 0)
                 finalEnc.setBuffer(p.finalWarped1Buf, offset: 0, index: 1)
                 finalEnc.setBuffer(resolvedMaskBuf, offset: 0, index: 2)
                 var intDimM: SIMD2<UInt32> = SIMD2(UInt32(intW), UInt32(intH))
                 finalEnc.setBytes(&intDimM, length: MemoryLayout<SIMD2<UInt32>>.size, index: 3)
                 finalEnc.setTexture(outTex, index: 0)
-                dispatch2D(finalEnc, conv.blendUpsampleMaskAndPack, gridW: width, gridH: height)
+                dispatch2D(finalEnc, blendMask, gridW: outTex.width, gridH: outTex.height)
             } else {
                 finalEnc.setComputePipelineState(conv.blendAndPack)
                 finalEnc.setBuffer(p.finalWarped0Buf, offset: 0, index: 0)
