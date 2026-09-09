@@ -9,7 +9,8 @@ final class CroppedOutputTests: XCTestCase {
         let kernels = try ConversionKernels(device: device)
         let w = 96, h = 64
         func buffer(_ count: Int, _ seed: Int) throws -> MTLBuffer {
-            let values = (0..<count).map { Float16(Float(($0 * seed) % 107) / 53 - 0.5).bitPattern }
+            // 直接构造有限 half 位模式，使 Intel 也能运行裁剪对照测试。
+            let values = (0..<count).map { UInt16(($0 * seed) % 0x3e00) | ($0.isMultiple(of: 3) ? 0x8000 : 0) }
             return try XCTUnwrap(values.withUnsafeBytes { device.makeBuffer(bytes: $0.baseAddress!, length: $0.count, options: .storageModeShared) })
         }
         let rgb0 = try buffer(w*h*3, 7), rgb1 = try buffer(w*h*3, 11)

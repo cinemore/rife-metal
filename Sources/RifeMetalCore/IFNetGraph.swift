@@ -157,6 +157,7 @@ public final class IFNetGraph {
 
     private static func probeAdditionRounding(context: InferenceContext, executable: MPSGraphExecutable,
                                               width: Int, height: Int, channels: Int) -> UInt32? {
+        #if arch(arm64)
         let count = width * height * channels
         guard let a = context.device.makeBuffer(length: count * 2, options: .storageModeShared),
               let b = context.device.makeBuffer(length: count * 2, options: .storageModeShared),
@@ -210,6 +211,10 @@ public final class IFNetGraph {
             }
         }
         return matches(evenPattern) ? 0 : matches(awayPattern) ? 1 : nil
+        #else
+        // Intel 的 Swift 工具链不支持这些 Float16 转换，保留原 MPSGraph 累加路径。
+        return nil
+        #endif
     }
 
     /// Compiles a tiny element-wise addition graph for a fixed shape, ready to encode onto a command buffer.

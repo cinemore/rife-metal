@@ -4,6 +4,7 @@ import XCTest
 
 final class AccumulationRoundingTests: XCTestCase {
     func testGPUAdditionMatchesBothRoundingModes() throws {
+        #if arch(arm64)
         let context = try InferenceContext(), device = context.device
         let pixels = 128*128, count = pixels*4
         let buffers = (0..<6).map { _ in device.makeBuffer(length:count*2,options:.storageModeShared)! }
@@ -45,5 +46,8 @@ final class AccumulationRoundingTests: XCTestCase {
                 XCTAssertEqual(mismatches,0,"mode=\(mode) buffer=\(outputIndex)")
             }
         }
+        #else
+        throw XCTSkip("Intel 保留原 MPSGraph 累加，不启用 Float16 舍入探测")
+        #endif
     }
 }
