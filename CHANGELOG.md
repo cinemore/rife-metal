@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.7
+
+- Move the release workflow from the retiring `macos-14` runner to the supported `macos-15` runner.
+- Preserve arm64, Intel x86_64, and universal CLI archives with their bundled Metal resources and RIFE weights.
+- Library and CLI behavior are unchanged.
+
 ## 0.1.6
 
 - Restore Intel CLI builds by keeping the original MPSGraph accumulation path on x86_64; Apple Silicon retains the validated rounding probe and GPU accumulation.

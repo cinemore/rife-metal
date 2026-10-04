@@ -57,7 +57,7 @@ tar -xzf rife-metal-macos-arm64.tar.gz
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/cinemore/rife-metal.git", exact: "0.1.6"),
+    .package(url: "https://github.com/cinemore/rife-metal.git", exact: "0.1.7"),
 ],
 targets: [
     .target(
