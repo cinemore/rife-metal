@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Replace the bundled model with Practical-RIFE v4.25, the upstream-recommended default for most scenes. The inference architecture is unchanged.
+
 ## 0.1.7
 
 - Move the release workflow from the retiring `macos-14` runner to the supported `macos-15` runner.

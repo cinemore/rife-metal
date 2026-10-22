@@ -18,7 +18,7 @@ let package = Package(
         .target(
             name: "RifeMetal",
             dependencies: ["RifeMetalCore"],
-            resources: [.copy("Resources/rife-v4.26.rmw")]
+            resources: [.copy("Resources/rife-v4.25.rmw")]
         ),
         .target(
             name: "RifeMetalCore",

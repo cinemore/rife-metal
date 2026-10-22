@@ -5,7 +5,7 @@
 Native Apple Silicon RIFE frame interpolation — Swift Package + CLI.
 Uses MPSGraph + a custom Metal warp kernel; no Vulkan/MoltenVK dependency.
 
-The package ships **Practical-RIFE v4.26** weights inline (~11 MB resource);
+The package ships **Practical-RIFE v4.25** weights inline (~11 MB resource);
 no model file management needed for typical use. See [THIRD-PARTY.md](./THIRD-PARTY.md)
 for the upstream MIT attribution.
 
@@ -33,7 +33,7 @@ brew install cinemore/tap/rife-metal
 ```
 
 The Homebrew package installs the native binary for your Mac's CPU architecture
-plus the bundled `rife-v4.26.rmw` weights. Apple Silicon Macs receive the
+plus the bundled `rife-v4.25.rmw` weights. Apple Silicon Macs receive the
 `arm64` archive; Intel Macs receive the `x86_64` archive. When you do not pass
 `--model`, the Homebrew wrapper uses the installed bundled weights
 automatically:
@@ -57,7 +57,7 @@ Download the archive for your Mac from the
 tar -xzf rife-metal-macos-arm64.tar.gz
 ./rife-metal-macos-arm64/bin/rife-metal \
   -0 frame_a.png -1 frame_b.png -o mid.png \
-  -m rife-metal-macos-arm64/share/rife-metal/rife-v4.26.rmw
+  -m rife-metal-macos-arm64/share/rife-metal/rife-v4.25.rmw
 ```
 
 ### Swift Package Manager Library
@@ -100,7 +100,7 @@ let frames: [CGImage] = try interpolator.interpolate(previous: frameA,
 
 `CVPixelBuffer` overloads (BGRA8 / RGBA8) are also available for video pipelines.
 
-`RifeConfiguration.bundled(qualityTier:)` resolves the bundled `rife-v4.26.rmw`
+`RifeConfiguration.bundled(qualityTier:)` resolves the bundled `rife-v4.25.rmw`
 via SwiftPM's per-target `Bundle.module`. To load alternate weights, build a
 `RifeConfiguration` with a custom `modelURL:`:
 
@@ -123,12 +123,12 @@ swift build -c release
 
 ./.build/release/rife-metal \
   -0 frame_a.png -1 frame_b.png -o mid.png \
-  -m Sources/RifeMetal/Resources/rife-v4.26.rmw
+  -m Sources/RifeMetal/Resources/rife-v4.25.rmw
 
 # Multi-frame (3× interpolation):
 ./.build/release/rife-metal \
   -0 frame_a.png -1 frame_b.png -o out.png \
-  -m Sources/RifeMetal/Resources/rife-v4.26.rmw \
+  -m Sources/RifeMetal/Resources/rife-v4.25.rmw \
   --timesteps 0.33,0.67
 # → out_t0.33.png, out_t0.67.png
 ```
@@ -152,10 +152,10 @@ pip install -r tools/requirements.txt   # torch + numpy + Pillow
 # 2. Convert PyTorch → .rmw
 python tools/convert-weights.py \
   --pytorch-checkpoint third_party/Practical-RIFE/train_log/flownet.pkl \
-  --out Sources/RifeMetal/Resources/rife-v4.26.rmw
+  --out Sources/RifeMetal/Resources/rife-v4.25.rmw
 ```
 
-The converter is currently v4.26-only (5 IFBlocks, encoder Head, ResConv with
+The converter is currently v4.25-only (5 IFBlocks, encoder Head, ResConv with
 `beta`, 8-channel feat propagation). Other architectures need converter updates.
 
 ---
@@ -163,16 +163,16 @@ The converter is currently v4.26-only (5 IFBlocks, encoder Head, ResConv with
 ## Validation
 
 The bundled `.rmw` ships with parity verified against the upstream Practical-RIFE
-v4.26 PyTorch reference. To re-verify locally:
+v4.25 PyTorch reference. To re-verify locally:
 
 ```bash
-swift test                       # 33 XCTests: PSNR, multi-timestep, stream, shape sanity
-python3 tools/parity-test.py     # CLI parity vs PyTorch v4.26 reference; expects 37+ dB on hq
+swift test                       # 37 XCTests: PSNR, multi-timestep, stream, shape sanity
+python3 tools/parity-test.py     # CLI parity vs PyTorch v4.25 reference; expects 37+ dB on hq
 python3 tools/cli-multi-test.py  # multi-output filename templating
 ```
 
 `tools/parity-test.py` runs the CLI on `Tests/fixtures/{frame_a,frame_b}.png`
-and reports PSNR against `Tests/fixtures/reference_mid.png` (PyTorch v4.26
+and reports PSNR against `Tests/fixtures/reference_mid.png` (PyTorch v4.25
 midframe). hq tier currently measures ~37 dB; the threshold gates against
 gross numerical bugs.
 
@@ -183,7 +183,7 @@ regenerated via `tools/_emit_reference.py`.
 
 ## Status & roadmap
 
-Currently shipping: **Practical-RIFE v4.26** weights, multi-frame interpolation
+Currently bundled: **Practical-RIFE v4.25** weights, multi-frame interpolation
 (arbitrary timesteps via `interpolate(prev, curr, timesteps:)`), three quality
 tiers (hq/balanced/fast), macOS 13+. iOS 16+ targets compile but have not been
 runtime-validated on iOS devices.
@@ -195,7 +195,7 @@ end-to-end), iOS device validation, caller-supplied multi-output buffer entry
 ## Related projects
 
 - [hzwer/Practical-RIFE](https://github.com/hzwer/Practical-RIFE) — upstream
-  PyTorch implementation; source of the v4.26 weights bundled here.
+  PyTorch implementation; source of the v4.25 weights bundled here.
 - [nihui/rife-ncnn-vulkan](https://github.com/nihui/rife-ncnn-vulkan) —
   cross-platform RIFE via ncnn + Vulkan. Source of the demo input frames above.
 
@@ -203,5 +203,5 @@ end-to-end), iOS device validation, caller-supplied multi-output buffer entry
 
 Apache License 2.0 — see [LICENSE](./LICENSE).
 
-The bundled `rife-v4.26.rmw` weights are derived from Practical-RIFE (MIT) —
+The bundled `rife-v4.25.rmw` weights are derived from Practical-RIFE (MIT) —
 see [THIRD-PARTY.md](./THIRD-PARTY.md) for upstream attribution.

@@ -24,7 +24,7 @@ public enum RifeQualityTier: String, Sendable, CaseIterable {
     }
 
     /// Padded dims must be a multiple of this so that `padded * internalScale` is itself
-    /// a multiple of 64 (required by v4.26's deepest stage at scale=16 combined with
+    /// a multiple of 64 (required by v4.25's deepest stage at scale=16 combined with
     /// IFBlock's internal 4× spatial downsample).
     public var paddingMultiple: Int {
         switch self {
@@ -51,13 +51,13 @@ public struct RifeConfiguration: Sendable {
 
 public extension RifeConfiguration {
 
-    /// File URL of the rife-v4.26 model weights bundled inside this Swift package.
+    /// File URL of the rife-v4.25 model weights bundled inside this Swift package.
     /// Resolved via SwiftPM's per-target `Bundle.module`. Force-unwrap is safe — if
     /// the resource is missing, the package itself is malformed.
-    static let bundledModelURL: URL = Bundle.module.url(forResource: "rife-v4.26",
+    static let bundledModelURL: URL = Bundle.module.url(forResource: "rife-v4.25",
                                                           withExtension: "rmw")!
 
-    /// Configuration that uses the package's bundled rife-v4.26 weights. Most callers
+    /// Configuration that uses the package's bundled rife-v4.25 weights. Most callers
     /// want this — no need to source weights separately.
     static func bundled(qualityTier: RifeQualityTier = .hq,
                         preferredDevice: MTLDevice? = nil) -> RifeConfiguration {

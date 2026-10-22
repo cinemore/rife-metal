@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """
-Converts a Practical-RIFE v4.26 PyTorch checkpoint (flownet.pkl) into a .rmw file.
+Converts a Practical-RIFE v4.25 PyTorch checkpoint (flownet.pkl) into a .rmw file.
 
 Source download (one-time setup):
     python3 -m venv /tmp/gdown-venv && /tmp/gdown-venv/bin/pip install gdown
-    /tmp/gdown-venv/bin/gdown 1gViYvvQrtETBgU1w8axZSsr7YUuw31uy
-    unzip RIFEv4.26_0921.zip
+    /tmp/gdown-venv/bin/gdown 1ZKjcbmt1hypiFprJPIKW0Tt0lr_2i7bg
+    unzip RIFEv4.25_0919.zip
     cp -r train_log/* third_party/Practical-RIFE/train_log/
 
 Usage:
     python3 tools/convert-weights.py \\
         --pytorch-checkpoint third_party/Practical-RIFE/train_log/flownet.pkl \\
-        --out Sources/RifeMetal/Resources/rife-v4.26.rmw
+        --out Sources/RifeMetal/Resources/rife-v4.25.rmw
 
-Architecture (v4.26):
+Architecture (v4.25):
     - 5 IFBlocks with channel widths [192, 128, 96, 64, 32]
     - scale_list = [16, 8, 4, 2, 1]
     - Encoder Head: 3 → 4 ch (cnn0..cnn3)
@@ -31,7 +31,7 @@ import torch
 from _rmw_format import write_rmw
 
 
-_V4_26 = {
+_V4_25 = {
     "ifblock_channels": [192, 128, 96, 64, 32],
     "scale_list":       [16, 8, 4, 2, 1],
 }
@@ -74,7 +74,7 @@ def _to_rmw_array(tensor, name):
 
 
 def _collect_tensors(state):
-    """Extract and validate all 158 tensors for rife-v4.26.
+    """Extract and validate all 158 tensors for rife-v4.25.
 
     Returns (list_of_(name, ndarray), list_of_error_strings).
     errors is non-empty if any key is missing or has an unexpected shape.
@@ -101,7 +101,7 @@ def _collect_tensors(state):
     add("encode.cnn3.bias",   (4,))
 
     # Per-block tensors: 5 blocks × 30 tensors each = 150 tensors
-    for i, c in enumerate(_V4_26["ifblock_channels"]):
+    for i, c in enumerate(_V4_25["ifblock_channels"]):
         in_ch = _BLOCK_IN_CH[i]
 
         # conv0: two-layer nn.Sequential; each layer is itself nn.Sequential([Conv2d, LeakyReLU]).
@@ -152,9 +152,9 @@ def main() -> int:
 
     write_rmw(
         out_path=args.out,
-        model="rife-v4.26",
-        ifblock_channels=_V4_26["ifblock_channels"],
-        scale_list=_V4_26["scale_list"],
+        model="rife-v4.25",
+        ifblock_channels=_V4_25["ifblock_channels"],
+        scale_list=_V4_25["scale_list"],
         tensors=tensors,
     )
     print(f"wrote {args.out} ({len(tensors)} tensors)")

@@ -21,9 +21,9 @@ final class EndToEndTests: XCTestCase {
 
     /// Fast tier (1/4 internal scale) trades quality for ~3x speedup vs balanced at 4K.
     /// Fast tier (1/4 internal scale) trades quality for ~3x speedup vs balanced at 4K.
-    /// On the 640×360 test fixture, v4.26's scale=16 coarsest stage operates on only 10×8
+    /// On the 640×360 test fixture, v4.25's scale=16 coarsest stage operates on only 10×8
     /// pixels at internal resolution, producing ~20 dB — substantially less than v4.6's 4-stage
-    /// network on the same fixture. This quality loss is geometry-driven (v4.26 adds a scale=16
+    /// network on the same fixture. This quality loss is geometry-driven (v4.25 adds a scale=16
     /// stage that degrades at this tiny size; at HD/4K the extra stage improves quality). The
     /// threshold of 19.0 dB is the architectural correctness bar for this tier/fixture combo;
     /// below that would indicate a numerical bug (e.g., all-zero output).

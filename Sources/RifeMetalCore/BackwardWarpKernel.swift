@@ -103,9 +103,9 @@ public final class ConversionKernels {
     public let flowUpsampleSplit: MTLComputePipelineState
     /// Fused mask-upsample + blend + RGB→BGRA pack (balanced tier final blend).
     public let blendUpsampleMaskAndPack: MTLComputePipelineState
-    /// Expand a packed fp16 4-channel buffer → RGBA16Float texture (v4.26 encoder feature buf→tex).
+    /// Expand a packed fp16 4-channel buffer → RGBA16Float texture (v4.25 encoder feature buf→tex).
     public let rgba4BufToRGBATex: MTLComputePipelineState
-    /// Pack an RGBA16Float texture → fp16 4-channel buffer (v4.26 warped feature tex→buf).
+    /// Pack an RGBA16Float texture → fp16 4-channel buffer (v4.25 warped feature tex→buf).
     public let rgbaTexTo4ChBuf: MTLComputePipelineState
 
     public init(device: MTLDevice) throws {

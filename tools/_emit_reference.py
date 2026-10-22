@@ -32,7 +32,7 @@ def emit_reference(checkpoint_path: Path, fixtures_dir: Path) -> None:
     b = torch.from_numpy(img_b).permute(2, 0, 1).unsqueeze(0).contiguous()
     timestep = torch.tensor([0.5])
 
-    # v4.26 IFBlock internal stride is 4× (conv0 stride=2 twice); combined with scale=8,
+    # v4.25 IFBlock internal stride is 4× (conv0 stride=2 twice); combined with scale=8,
     # the model requires H and W to be multiples of 64.  Pad to the next multiple and
     # crop the output back to the original size.
     orig_h, orig_w = a.shape[2], a.shape[3]
@@ -65,7 +65,7 @@ def emit_reference(checkpoint_path: Path, fixtures_dir: Path) -> None:
     activations = {}
     handles = []
     if hasattr(model, "block0"):
-        # v4.26 stores blocks as separate attributes (block0..block4), not a ModuleList.
+        # v4.25 stores blocks as separate attributes (block0..block4), not a ModuleList.
         # Hook each one for per-stage flow/mask debug dump.
         block_attrs = [f"block{i}" for i in range(5)]
         for i, name in enumerate(block_attrs):
@@ -79,10 +79,10 @@ def emit_reference(checkpoint_path: Path, fixtures_dir: Path) -> None:
             handles.append(block.register_forward_hook(make_hook(i)))
 
     with torch.no_grad():
-        # v4.26 has 5 IFBlocks; pass the matching 5-element scale list explicitly.
+        # v4.25 has 5 IFBlocks; pass the matching 5-element scale list explicitly.
         # (The forward() default [8,4,2,1] is a 4-element v4.6 remnant.)
         result = model(torch.cat([a, b], dim=1), timestep, scale_list=[16, 8, 4, 2, 1], training=False)
-        # v4.26 IFNet returns (flow_list, mask, merged) per IFNet_HDv3.py.
+        # v4.25 IFNet returns (flow_list, mask, merged) per IFNet_HDv3.py.
         if isinstance(result, tuple) and len(result) == 3:
             _, _, merged = result
         else:
@@ -92,7 +92,7 @@ def emit_reference(checkpoint_path: Path, fixtures_dir: Path) -> None:
         # blended tensor for stage 4 (the final midframe). See IFNet_HDv3.py forward().
         mid = merged[4]
         if isinstance(mid, tuple):
-            # Defensive: if v4.26 returns merged[4] as a tuple, take the blended tensor.
+            # Defensive: if v4.25 returns merged[4] as a tuple, take the blended tensor.
             mid = mid[0] if mid[0].shape[1] == 3 else mid[-1]
 
     for h in handles:
@@ -110,7 +110,7 @@ def emit_reference(checkpoint_path: Path, fixtures_dir: Path) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pytorch-checkpoint", type=Path, required=True,
-                        help="Path to flownet.pkl (Practical-RIFE v4.26 checkpoint)")
+                        help="Path to flownet.pkl (Practical-RIFE v4.25 checkpoint)")
     parser.add_argument("--fixtures-dir", type=Path, default=Path("Tests/fixtures"),
                         help="Directory containing frame_a.png / frame_b.png (outputs written here)")
     args = parser.parse_args()

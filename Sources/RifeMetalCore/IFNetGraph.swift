@@ -238,7 +238,7 @@ public final class IFNetGraph {
 
     // MARK: - Encoder Head compilation
 
-    /// Compiles the v4.26 encoder Head subgraph: img [1, intH, intW, 3] → feat [1, intH, intW, 4].
+    /// Compiles the v4.25 encoder Head subgraph: img [1, intH, intW, 3] → feat [1, intH, intW, 4].
     /// Architecture: cnn0(stride 2) → cnn1(stride 1) → cnn2(stride 1) → cnn3(ConvTranspose stride 2).
     /// Net spatial effect: 2× down then 2× up → same spatial size as input.
     private static func compileEncoderHead(context: InferenceContext,
@@ -306,7 +306,7 @@ public final class IFNetGraph {
         let g = MPSGraph()
         let mpsDevice = context.mpsGraphDevice
 
-        // v4.26 channel layout:
+        // v4.25 channel layout:
         //   Stage 0: cat(img0[3], img1[3], f0[4], f1[4], t[1]) = 15 ch
         //            IFBlock receives this 15-ch input; conv0 in_ch = 15.
         //   Stage i>0: cat(warped0[3], warped1[3], wf0[4], wf1[4], t[1], mask[1], feat[8]) = 24 ch
@@ -750,7 +750,7 @@ public final class IFNetGraph {
             enc.setBuffer(p.stageWarped1Buf, offset: 0, index: 0)
             dispatch2D(enc, conv.rgbaTexToRGBBuf, gridW: intW, gridH: intH)
 
-            // v4.26: Backward warps for 4-ch encoder features at internal res.
+            // v4.25: Backward warps for 4-ch encoder features at internal res.
             // f0Tex/f1Tex were populated once (step 3d); stageWf0Tex/stageWf1Tex receive output.
             warp.encode(into: enc, source: p.f0Tex, flow: p.stageFlowTex0, output: p.stageWf0Tex)
             warp.encode(into: enc, source: p.f1Tex, flow: p.stageFlowTex1, output: p.stageWf1Tex)

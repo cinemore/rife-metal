@@ -48,7 +48,7 @@ kernel void rifeAccumulateFlowMaskRNA(
 /// Source and output are RGBA half-precision textures; flow is RG half-precision (only .rg used).
 /// All four output lanes pass through unchanged, so this kernel handles two cases interchangeably:
 ///   - 3-channel image warps: caller passes RGBA texture with alpha as junk; alpha lane is ignored downstream.
-///   - 4-channel feature warps (v4.26 encoder features): caller passes RGBA texture with all 4 lanes meaningful.
+///   - 4-channel feature warps (v4.25 encoder features): caller passes RGBA texture with all 4 lanes meaningful.
 /// No kernel-side change is needed to switch between cases — only the texture's data semantics differ at runtime.
 kernel void rifeBackwardWarp(
     texture2d<half, access::sample> source [[texture(0)]],
@@ -377,7 +377,7 @@ kernel void rifeRGBBufToRGBATex(
 }
 
 /// Expands a packed fp16 4-channel buffer (NHWC) → RGBA16Float texture.
-/// Used to make warp-source textures from v4.26 encoder feature buffers without a CPU round-trip.
+/// Used to make warp-source textures from v4.25 encoder feature buffers without a CPU round-trip.
 /// Unlike rifeRGBBufToRGBATex, all four channels are meaningful — alpha is not forced to 1.
 kernel void rife4ChBufToRGBATex(
     device const half *input              [[buffer(0)]],
@@ -391,7 +391,7 @@ kernel void rife4ChBufToRGBATex(
 }
 
 /// Packs an RGBA16Float texture into a fp16 4-channel MTLBuffer (NHWC), preserving all 4 channels.
-/// Used to feed v4.26 warped feature textures back to MPSGraph as 4-ch tensors without a CPU round-trip.
+/// Used to feed v4.25 warped feature textures back to MPSGraph as 4-ch tensors without a CPU round-trip.
 kernel void rifeRGBATexTo4ChBuf(
     texture2d<half, access::read> input [[texture(0)]],
     device half *output                  [[buffer(0)]],

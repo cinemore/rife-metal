@@ -1,4 +1,5 @@
 import XCTest
+@testable import RifeMetal
 @testable import RifeMetalCore
 
 final class WeightStoreTests: XCTestCase {
@@ -69,17 +70,13 @@ final class WeightStoreTests: XCTestCase {
         XCTAssertThrowsError(try WeightStore(url: url))
     }
 
-    func testLoadFromPythonOutput() throws {
-        let url = URL(fileURLWithPath: "/tmp/test.rmw")
-        guard FileManager.default.fileExists(atPath: url.path) else {
-            throw XCTSkip("/tmp/test.rmw not present; run tools/convert-weights.py first")
-        }
-        let store = try WeightStore(url: url)
-        XCTAssertEqual(store.header.model, "rife-v4.6")
-        XCTAssertTrue(store.header.tensors.contains(where: { $0.name == "block0.conv0.0.weight" }))
-        let bytes = try store.tensorBytes(named: "block0.conv0.0.weight")
-        // PyTorch shape: [192, 7, 3, 3]. After HWIO permute: [3, 3, 7, 192].
-        // Total elements: 192 * 7 * 3 * 3 = 12096. fp16 = 2 bytes each → 24192 bytes.
-        XCTAssertEqual(bytes.count, 192 * 7 * 3 * 3 * 2)
+    func testBundledModelHasConvertedTensorLayout() throws {
+        let store = try WeightStore(url: RifeConfiguration.bundledModelURL)
+        XCTAssertEqual(store.header.model, "rife-v4.25")
+        XCTAssertTrue(store.header.tensors.contains(where: { $0.name == "block0.conv0.0.0.weight" }))
+        let bytes = try store.tensorBytes(named: "block0.conv0.0.0.weight")
+        // PyTorch shape: [96, 15, 3, 3]. After HWIO permute: [3, 3, 15, 96].
+        // Total elements: 96 * 15 * 3 * 3 = 12960. fp16 = 2 bytes each → 25920 bytes.
+        XCTAssertEqual(bytes.count, 96 * 15 * 3 * 3 * 2)
     }
 }

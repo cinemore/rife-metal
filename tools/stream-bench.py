@@ -15,7 +15,7 @@ def main() -> int:
     parser.add_argument("--cli",      default=".build/release/rife-metal")
     parser.add_argument("--fixtures", type=Path, default=Path("Tests/fixtures"))
     parser.add_argument("--model",    type=Path,
-                        default=Path("Sources/RifeMetal/Resources/rife-v4.26.rmw"))
+                        default=Path("Sources/RifeMetal/Resources/rife-v4.25.rmw"))
     parser.add_argument("--tier",     default="hq",
                         choices=["hq", "balanced", "fast"])
     parser.add_argument("--iters",    type=int, default=30)

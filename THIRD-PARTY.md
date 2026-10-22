@@ -2,7 +2,7 @@
 
 ## Practical-RIFE
 
-The model weights bundled in `Sources/RifeMetal/Resources/rife-v4.26.rmw` are derived from the **Practical-RIFE v4.26** PyTorch checkpoint (`flownet.pkl`) released by the Practical-RIFE project.
+The model weights bundled in `Sources/RifeMetal/Resources/rife-v4.25.rmw` are derived from the **Practical-RIFE v4.25** PyTorch checkpoint (`flownet.pkl`) released by the Practical-RIFE project.
 
 - **Project**: https://github.com/hzwer/Practical-RIFE
 - **License**: MIT

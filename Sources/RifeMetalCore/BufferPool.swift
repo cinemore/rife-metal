@@ -101,7 +101,7 @@ final class BufferPool {
     /// Packed warped RGB output for source 1 at internal res:  [1, intH, intW, 3]
     let stageWarped1Buf: MTLBuffer
 
-    // MARK: v4.26 encoder + feat propagation buffers (GPU-only, NHWC fp16)
+    // MARK: v4.25 encoder + feat propagation buffers (GPU-only, NHWC fp16)
 
     /// Encoder feature for img0 at internal res:  [1, intH, intW, 4]
     let f0Buf: MTLBuffer
@@ -205,7 +205,7 @@ final class BufferPool {
         let finalFlowTex1Desc  = rgDesc(w: paddedW, h: paddedH)
         let finalWarpedTex0Desc = rgbaDesc(w: paddedW, h: paddedH)
         let finalWarpedTex1Desc = rgbaDesc(w: paddedW, h: paddedH)
-        // v4.26: 4-ch feature texture descriptor (shared shape for f0/f1 and stageWf0/stageWf1).
+        // v4.25: 4-ch feature texture descriptor (shared shape for f0/f1 and stageWf0/stageWf1).
         let feat4Desc           = rgbaDesc(w: intW,    h: intH)
 
         // Compute total heap bytes needed (buffers + textures, all private).
@@ -234,7 +234,7 @@ final class BufferPool {
         heapBytes += heapTexBytes(finalFlowTex1Desc)
         heapBytes += heapTexBytes(finalWarpedTex0Desc)
         heapBytes += heapTexBytes(finalWarpedTex1Desc)
-        // v4.26 encoder + feat propagation buffers.
+        // v4.25 encoder + feat propagation buffers.
         heapBytes += heapBufBytes(intFeat4Bytes) * 2     // f0Buf, f1Buf
         heapBytes += heapBufBytes(intFeatBytes)  * 2     // stageFeatBufA, stageFeatBufB
         heapBytes += heapBufBytes(intFeat4Bytes) * 2     // stageWf0Buf, stageWf1Buf
@@ -348,7 +348,7 @@ final class BufferPool {
         self.stageWarped0Buf = _stageWarped0Buf
         self.stageWarped1Buf = _stageWarped1Buf
 
-        // v4.26 encoder + feat propagation buffers — sized at internal resolution.
+        // v4.25 encoder + feat propagation buffers — sized at internal resolution.
         guard let _f0Buf         = makePrivateBuf(intFeat4Bytes),
               let _f1Buf         = makePrivateBuf(intFeat4Bytes),
               let _stageFeatBufA = makePrivateBuf(intFeatBytes),

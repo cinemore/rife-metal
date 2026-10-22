@@ -1,7 +1,7 @@
 import Foundation
 import MetalPerformanceShadersGraph
 
-/// Builds one v4.26 IFBlock as an MPSGraph subgraph. Verified against
+/// Builds one v4.25 IFBlock as an MPSGraph subgraph. Verified against
 /// `third_party/Practical-RIFE/train_log/IFNet_HDv3.py`.
 ///
 /// IFBlock(c) layout (PyTorch reference):
@@ -41,7 +41,7 @@ final class IFBlockBuilder {
     ///     Stage 0: in_ch = 15. Stage i>0: in_ch = 24 (before the IFBlockBuilder concats prev_flow).
     ///   - previousFlow: accumulated flow from prior stage at full internal resolution [1, intH, intW, 4].
     ///     nil for stage 0.
-    ///   - scale: stage scale factor; v4.26 scale_list is [16, 8, 4, 2, 1].
+    ///   - scale: stage scale factor; v4.25 scale_list is [16, 8, 4, 2, 1].
     /// - Returns: `(flow, mask, feat)` all at full internal resolution.
     ///   flow: [1, intH, intW, 4] (already multiplied by scale).
     ///   mask: [1, intH, intW, 1].

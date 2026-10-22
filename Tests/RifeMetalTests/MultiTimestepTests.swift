@@ -152,13 +152,13 @@ final class MultiTimestepTests: XCTestCase {
         }
     }
 
-    // MARK: - v4.26 fixture shape sanity
+    // MARK: - v4.25 fixture shape sanity
 
-    func testV4_26FixtureHasExpectedShape() throws {
+    func testV4_25FixtureHasExpectedShape() throws {
         let store = try WeightStore(url: RifeConfiguration.bundledModelURL)
         XCTAssertEqual(store.header.ifblockChannels, [192, 128, 96, 64, 32])
         XCTAssertEqual(store.header.scaleList, [16, 8, 4, 2, 1])
-        XCTAssertEqual(store.header.model, "rife-v4.26")
+        XCTAssertEqual(store.header.model, "rife-v4.25")
     }
 
     // MARK: - Helpers (private — same pattern as CallerSuppliedOutputTests)
