@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.8
 
 - Replace the bundled model with Practical-RIFE v4.25, the upstream-recommended default for most scenes. The inference architecture is unchanged.
 

@@ -66,7 +66,7 @@ Add to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/cinemore/rife-metal.git", exact: "0.1.7"),
+    .package(url: "https://github.com/cinemore/rife-metal.git", exact: "0.1.8"),
 ],
 targets: [
     .target(
