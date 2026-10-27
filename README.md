@@ -3,7 +3,11 @@
 [English](./README.md) | [简体中文](./README-zh.md)
 
 Native Apple Silicon RIFE frame interpolation — Swift Package + CLI.
-Uses MPSGraph + a custom Metal warp kernel; no Vulkan/MoltenVK dependency.
+Uses MPSGraph and a custom Metal warp kernel; no Vulkan/MoltenVK dependency.
+
+The Swift API interpolates between `CGImage` or `CVPixelBuffer` frames for video
+editors, animation tools and frame-processing pipelines. The macOS CLI generates
+intermediate frames from image pairs for terminal and batch workflows.
 
 The package ships **Practical-RIFE v4.25** weights inline (~11 MB resource);
 no model file management needed for typical use. See [THIRD-PARTY.md](./THIRD-PARTY.md)

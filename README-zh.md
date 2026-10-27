@@ -2,7 +2,11 @@
 
 [English](./README.md) | [简体中文](./README-zh.md)
 
-原生 Apple Metal / MPSGraph RIFE 补帧库与命令行工具。它使用 MPSGraph 和自定义 Metal warp kernel，不依赖 Vulkan 或 MoltenVK。
+基于 Apple Metal / MPSGraph 的 RIFE 补帧库与 macOS 命令行工具。
+
+使用 MPSGraph 和自定义 Metal warp kernel，不依赖 Vulkan 或 MoltenVK。
+
+Swift API 接收 `CGImage` 或 `CVPixelBuffer` 前后两帧，适用于视频编辑、动画工具和帧处理流水线；命令行工具可直接从图片对生成中间帧，并支持脚本批处理。
 
 该包内置 **Practical-RIFE v4.25** 权重（约 11 MB 资源），常规使用不需要额外管理模型文件。上游 MIT 许可归属见 [THIRD-PARTY.md](./THIRD-PARTY.md)。
 
