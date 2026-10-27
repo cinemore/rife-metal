@@ -1,0 +1,22 @@
+name: CI
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v6.0.2
+      - name: Run package tests
+        run: swift test
+      - name: Build release CLI
+        run: swift build -c release --product rife-metal
+      - name: Verify CLI frame interpolation
+        run: >-
+          .build/release/rife-metal
+          -0 Tests/fixtures/frame_a.png
+          -1 Tests/fixtures/frame_b.png
+          --model Sources/RifeMetal/Resources/rife-v4.25.rmw
+          --output "$RUNNER_TEMP/rife-output.png"
+      - name: Verify iOS library build
+        run: xcodebuild -scheme RifeMetal -destination 'generic/platform=iOS' -skipPackagePluginValidation CODE_SIGNING_ALLOWED=NO build
